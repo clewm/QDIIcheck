@@ -18,13 +18,6 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  // 检查是否交易日（跳过周末）
-  const now = new Date();
-  const day = now.getDay();
-  if (day === 0 || day === 6) {
-    return NextResponse.json({ message: "Weekend, skipped" });
-  }
-
   try {
     // 拉取最新数据（含 F10 准确限额）
     const allFunds = await fetchQDIIFunds();
@@ -35,8 +28,7 @@ export async function GET(request: Request) {
       return NextResponse.json({ message: "No active subscriptions" });
     }
 
-    // 检查当前时间是否匹配任一订阅者的通知时间
-    const currentHHMM = `${String(now.getUTCHours() + 8).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+    const now = new Date();
     // 简化：对所有订阅者都发送，实际可按 notifyTime 过滤
 
     let sent = 0;
