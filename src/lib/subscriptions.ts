@@ -9,7 +9,7 @@ export interface Subscription {
 }
 
 async function readAll(): Promise<Subscription[]> {
-  const raw = await (await getStorage()).getSubscriptions();
+  const raw = await getStorage().getSubscriptions();
   try {
     return JSON.parse(raw);
   } catch {
@@ -18,7 +18,7 @@ async function readAll(): Promise<Subscription[]> {
 }
 
 async function writeAll(subs: Subscription[]): Promise<void> {
-  await (await getStorage()).saveSubscriptions(JSON.stringify(subs, null, 2));
+  await getStorage().saveSubscriptions(JSON.stringify(subs, null, 2));
 }
 
 export async function getAllSubscriptions(): Promise<Subscription[]> {

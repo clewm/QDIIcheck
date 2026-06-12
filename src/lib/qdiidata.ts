@@ -149,7 +149,7 @@ interface CachePayload {
  * 自动批量抓取 F10 页面覆盖 API 的不准确状态
  */
 export async function fetchQDIIFunds(): Promise<QDIIFund[]> {
-  const storage = await getStorage();
+  const storage = getStorage();
 
   // 进程内缓存命中
   if (_cache && Date.now() - _cache.ts < CACHE_TTL_MS) {
