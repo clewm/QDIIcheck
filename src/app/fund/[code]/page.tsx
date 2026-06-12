@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { fetchQDIIFunds } from "@/lib/qdiidata";
+import type { QDIIFund } from "@/lib/types";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft } from "lucide-react";
@@ -16,7 +17,7 @@ export default async function FundDetailPage({
 }) {
   const { code } = await params;
 
-  let funds;
+  let funds: QDIIFund[];
   try {
     funds = await fetchQDIIFunds();
   } catch {
@@ -28,7 +29,7 @@ export default async function FundDetailPage({
   }
 
   const fund = funds.find((f) => f.code === code);
-  if (!fund) notFound();
+  if (!fund) return notFound();
 
   const st = statusConfig[fund.purchaseStatus];
 

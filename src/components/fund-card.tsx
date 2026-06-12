@@ -1,6 +1,6 @@
 "use client";
 
-import type { QDIIFund } from "@/lib/qdiidata";
+import type { QDIIFund } from "@/lib/types";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";

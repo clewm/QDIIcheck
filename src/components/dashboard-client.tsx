@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import type { QDIIFund } from "@/lib/qdiidata";
+import type { QDIIFund } from "@/lib/types";
 import { FundCard } from "@/components/fund-card";
 import { FundDetailModal } from "@/components/fund-detail-modal";
 import { SubscribeModal } from "@/components/subscribe-modal";

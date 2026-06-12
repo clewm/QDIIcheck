@@ -5,28 +5,11 @@
 
 import { batchFetchF10 } from "./scraper";
 import { getStorage } from "./storage";
+import type { QDIIFund } from "./types";
 
-export interface QDIIFund {
-  code: string;
-  name: string;
-  navDate: string;
-  nav: number; // 单位净值
-  dayChange: number; // 日涨跌 %
-  week1: number; // 近1周 %
-  month1: number; // 近1月 %
-  month3: number; // 近3月 %
-  month6: number; // 近6月 %
-  year1: number; // 近1年 %
-  year2: number; // 近2年 %
-  year3: number; // 近3年 %
-  ytd: number; // 今年以来 %
-  sinceInception: number; // 成立以来 %
-  purchaseStatus: "open" | "limited" | "suspended";
-  minPurchase: string; // 起购金额文本，如 "10元"
-  limitAmount: number; // 限额数值（元），0 表示不限额或无法解析
-  categories: string[]; // 细分行业标签
-  feeRate: string; // 优惠费率
-}
+// Re-export from the shared types file so existing imports keep working.
+// The canonical definition lives in types.ts (no runtime deps → safe for client bundle).
+export type { QDIIFund } from "./types";
 
 /**
  * 从基金名称提取赛道/行业标签
@@ -166,7 +149,7 @@ interface CachePayload {
  * 自动批量抓取 F10 页面覆盖 API 的不准确状态
  */
 export async function fetchQDIIFunds(): Promise<QDIIFund[]> {
-  const storage = getStorage();
+  const storage = await getStorage();
 
   // 进程内缓存命中
   if (_cache && Date.now() - _cache.ts < CACHE_TTL_MS) {

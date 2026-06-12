@@ -1,5 +1,6 @@
 import { Suspense } from "react";
-import { fetchQDIIFunds, extractAllCategories, getLastUpdateTime, type QDIIFund } from "@/lib/qdiidata";
+import { fetchQDIIFunds, extractAllCategories, getLastUpdateTime } from "@/lib/qdiidata";
+import type { QDIIFund } from "@/lib/types";
 import { DashboardClient } from "@/components/dashboard-client";
 import { LoadingIndicator } from "@/components/loading-indicator";
 

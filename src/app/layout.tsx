@@ -16,7 +16,6 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "QDII Watch - 基金申购限额监控",
   description: "每日自动监控 QDII 基金申购状态与限额变化，第一时间推送通知",
-  manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",

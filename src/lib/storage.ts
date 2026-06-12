@@ -18,15 +18,23 @@ export interface StorageProvider {
 }
 
 // ---------------------------------------------------------------------------
-// Singleton instance
+// Singleton instance — uses async dynamic import to avoid a circular
+// dependency cycle at module-evaluation time:
+//   storage.ts → storage-s3.ts → storage.ts (type-only, but some bundlers
+//   may not erase import type correctly).
 // ---------------------------------------------------------------------------
 
 let _instance: StorageProvider | null = null;
+let _initPromise: Promise<StorageProvider> | null = null;
 
-export function getStorage(): StorageProvider {
+export async function getStorage(): Promise<StorageProvider> {
   if (_instance) return _instance;
-  const { S3StorageProvider } =
-    require("./storage-s3") as typeof import("./storage-s3");
-  _instance = new S3StorageProvider();
-  return _instance;
+  if (_initPromise) return _initPromise;
+
+  _initPromise = import("./storage-s3").then((mod) => {
+    _instance = new mod.S3StorageProvider();
+    return _instance;
+  });
+
+  return _initPromise;
 }
