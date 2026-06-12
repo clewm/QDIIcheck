@@ -147,7 +147,7 @@ function parseRecord(record: string): QDIIFund {
   };
 }
 
-/** 本地内存缓存（local 模式直接使用，edge-kv 模式用于存 updateTs） */
+/** 进程内内存缓存，避免高频请求时重复调 S3 */
 let _cache: { data: QDIIFund[]; ts: number } | null = null;
 const CACHE_TTL_MS = 60 * 60 * 1000; // 1 小时
 
@@ -168,7 +168,7 @@ interface CachePayload {
 export async function fetchQDIIFunds(): Promise<QDIIFund[]> {
   const storage = getStorage();
 
-  // 本地内存缓存命中（edge-kv 模式下 TTL 由 KV 自身管理，此处 ts 仅用于 getLastUpdateTime）
+  // 进程内缓存命中
   if (_cache && Date.now() - _cache.ts < CACHE_TTL_MS) {
     return _cache.data;
   }

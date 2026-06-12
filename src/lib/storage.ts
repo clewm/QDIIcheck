@@ -1,8 +1,7 @@
 /**
- * Storage abstraction layer
+ * Storage layer — S3-compatible object storage
  *
- * Local environment: file-based subscriptions + in-memory fund cache
- * Production (ESA): Edge KV for everything
+ * All environments (local + production) read/write from the S3 bucket.
  */
 
 export interface StorageProvider {
@@ -18,62 +17,16 @@ export interface StorageProvider {
   invalidateQDIICache(): Promise<void>;
 }
 
-/** Resolve the storage provider based on environment */
+// ---------------------------------------------------------------------------
+// Singleton instance
+// ---------------------------------------------------------------------------
+
+let _instance: StorageProvider | null = null;
+
 export function getStorage(): StorageProvider {
-  const backend = process.env.STORAGE_BACKEND;
-
-  if (backend === "edge-kv") {
-    // Dynamic import to avoid bundling Edge KV SDK in local dev
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const { EdgeKvStorageProvider } =
-      require("./storage-edge-kv") as typeof import("./storage-edge-kv");
-    return new EdgeKvStorageProvider();
-  }
-
-  // Default: local file + memory cache
-  return new LocalStorageProvider();
-}
-
-// ---------------------------------------------------------------------------
-// Local implementation: fs for subscriptions, in-memory cache for fund data
-// ---------------------------------------------------------------------------
-
-import fs from "fs";
-import path from "path";
-
-const SUBSCRIPTIONS_PATH = path.join(
-  process.cwd(),
-  "data",
-  "subscriptions.json"
-);
-
-let _cache: { data: string; expiry: number } | null = null;
-
-class LocalStorageProvider implements StorageProvider {
-  async getSubscriptions(): Promise<string> {
-    try {
-      return fs.readFileSync(SUBSCRIPTIONS_PATH, "utf-8");
-    } catch {
-      return '{"subscriptions":[]}';
-    }
-  }
-
-  async saveSubscriptions(data: string): Promise<void> {
-    fs.writeFileSync(SUBSCRIPTIONS_PATH, data, "utf-8");
-  }
-
-  async getQDIICache(): Promise<string | null> {
-    if (_cache && Date.now() < _cache.expiry) {
-      return _cache.data;
-    }
-    return null;
-  }
-
-  async saveQDIICache(data: string, ttlSeconds: number): Promise<void> {
-    _cache = { data, expiry: Date.now() + ttlSeconds * 1000 };
-  }
-
-  async invalidateQDIICache(): Promise<void> {
-    _cache = null;
-  }
+  if (_instance) return _instance;
+  const { S3StorageProvider } =
+    require("./storage-s3") as typeof import("./storage-s3");
+  _instance = new S3StorageProvider();
+  return _instance;
 }

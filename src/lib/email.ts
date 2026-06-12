@@ -1,10 +1,32 @@
-import { Resend } from "resend";
+import nodemailer from "nodemailer";
 import type { QDIIFund } from "./qdiidata";
 
-function getResend() {
-  const apiKey = process.env.RESEND_API_KEY;
-  if (!apiKey) throw new Error("RESEND_API_KEY not configured");
-  return new Resend(apiKey);
+/**
+ * Create a nodemailer transporter using 163 SMTP.
+ * Connection is lazily created on first use.
+ */
+let _transporter: nodemailer.Transporter | null = null;
+
+function getTransporter(): nodemailer.Transporter {
+  if (_transporter) return _transporter;
+
+  const host = process.env.SMTP_HOST || "smtp.163.com";
+  const port = Number(process.env.SMTP_PORT) || 465;
+  const user = process.env.SMTP_USER;
+  const pass = process.env.SMTP_PASS;
+
+  if (!user || !pass) {
+    throw new Error("SMTP_USER and SMTP_PASS must be configured");
+  }
+
+  _transporter = nodemailer.createTransport({
+    host,
+    port,
+    secure: port === 465, // true for 465, false for other ports
+    auth: { user, pass },
+  });
+
+  return _transporter;
 }
 
 function formatLimit(amount: number, status: string): string {
@@ -83,15 +105,16 @@ export async function sendNotificationEmail(
   to: string,
   funds: QDIIFund[],
   newFunds: QDIIFund[],
-  notifyTime: string
+  _notifyTime: string
 ) {
-  const resend = getResend();
+  const transporter = getTransporter();
 
+  const from = process.env.EMAIL_FROM || process.env.SMTP_USER!;
   const subject = `QDII 限额日报 · ${new Date().toLocaleDateString("zh-CN")}`;
   const html = buildEmailHtml(funds, newFunds);
 
-  await resend.emails.send({
-    from: process.env.EMAIL_FROM || "QDII Watch <onboarding@resend.dev>",
+  await transporter.sendMail({
+    from,
     to,
     subject,
     html,
