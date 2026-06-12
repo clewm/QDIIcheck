@@ -4,7 +4,8 @@ import type { QDIIFund } from "@/lib/types";
 import { DashboardClient } from "@/components/dashboard-client";
 import { LoadingIndicator } from "@/components/loading-indicator";
 
-export const dynamic = "force-dynamic";
+// 使用 ISR：页面缓存 1 小时，cron 任务更新数据后通过 revalidatePath 主动刷新
+export const revalidate = 3600;
 
 async function DashboardContent() {
   let funds: QDIIFund[] = [];

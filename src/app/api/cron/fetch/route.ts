@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { getAllSubscriptions } from "@/lib/subscriptions";
 import { fetchQDIIFunds } from "@/lib/qdiidata";
 import { sendNotificationEmail } from "@/lib/email";
@@ -7,9 +8,10 @@ export const dynamic = "force-dynamic";
 
 /**
  * GET /api/cron/fetch
- * Vercel Cron 入口 — 每个交易日执行
- * 1. 拉取最新 QDII 数据
- * 2. 向所有订阅者发送邮件
+ * 定时任务入口 — 每日执行
+ * 1. 拉取最新 QDII 数据（写入 S3 缓存）
+ * 2. 刷新页面 ISR 缓存
+ * 3. 向所有订阅者发送邮件
  */
 export async function GET(request: Request) {
   const authHeader = request.headers.get("authorization");
@@ -19,32 +21,30 @@ export async function GET(request: Request) {
   }
 
   try {
-    // 拉取最新数据（含 F10 准确限额）
+    // 拉取最新数据（含 F10 准确限额）→ 自动写入 S3 缓存
     const allFunds = await fetchQDIIFunds();
+
+    // 刷新首页和基金详情页的 ISR 缓存
+    revalidatePath("/");
+    revalidatePath("/fund/[code]", "page");
 
     // 获取所有活跃订阅
     const subscriptions = await getAllSubscriptions();
     if (subscriptions.length === 0) {
-      return NextResponse.json({ message: "No active subscriptions" });
+      return NextResponse.json({ funds: allFunds.length, message: "Data refreshed, no active subscriptions" });
     }
-
-    const now = new Date();
-    // 简化：对所有订阅者都发送，实际可按 notifyTime 过滤
 
     let sent = 0;
     let failed = 0;
 
     for (const sub of subscriptions) {
       try {
-        // 找到用户关注的基金
         const followedFunds = allFunds.filter((f) =>
           sub.fundCodes.includes(f.code)
         );
 
-        // 找出新增的 QDII 基金（近 7 天内成立的）
         const newFunds = allFunds
           .filter((f) => {
-            // 简单判断：sinceInception 为 0 可能是新基金
             return f.sinceInception === 0;
           })
           .slice(0, 10);
@@ -62,7 +62,7 @@ export async function GET(request: Request) {
       }
     }
 
-    return NextResponse.json({ sent, failed, total: subscriptions.length });
+    return NextResponse.json({ funds: allFunds.length, sent, failed, total: subscriptions.length });
   } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Unknown error" },

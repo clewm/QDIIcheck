@@ -8,7 +8,7 @@ import { ArrowLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Pct, statusConfig } from "@/components/shared";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 3600;
 
 export default async function FundDetailPage({
   params,
