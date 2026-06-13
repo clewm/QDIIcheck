@@ -81,20 +81,30 @@ export async function scrapeFundStatus(code: string): Promise<FundStatus> {
   const h4Name = $("h4").first().text().trim().replace(/\.{3}.*$/, "").trim();
   const name = titleMatch?.[1]?.trim() || h4Name || code;
 
-  // 解析交易状态：开放申购 / 限大额 / 暂停申购
+  // 解析申购状态：优先从表格中的"申购状态"解析（可靠），再回退到侧边栏"交易状态："（不可靠）
   let purchaseStatus: "open" | "limited" | "suspended" = "open";
   let dailyLimit: number | null = null;
   let redeemStatus: "open" | "suspended" = "open";
 
-  const tradeMatch = text.match(/交易状态[：:]\s*(\S+)/);
-  if (tradeMatch) {
-    const status = tradeMatch[1];
-    if (status === "暂停申购") {
-      purchaseStatus = "suspended";
-    } else if (status === "限大额") {
-      purchaseStatus = "limited";
-    } else {
-      purchaseStatus = "open";
+  // 优先从表格解析"申购状态XXX"，这是 F10 表格中的标准字段
+  const purchaseTableMatch = text.match(/申购状态\s*(限大额|暂停申购|开放申购)/);
+  if (purchaseTableMatch) {
+    const s = purchaseTableMatch[1];
+    if (s === "暂停申购") purchaseStatus = "suspended";
+    else if (s === "限大额") purchaseStatus = "limited";
+    else purchaseStatus = "open";
+  } else {
+    // 回退：侧边栏 "交易状态：XXX"，注意该标签含义不固定（可能是赎回状态）
+    const tradeMatch = text.match(/交易状态[：:]\s*(\S+)/);
+    if (tradeMatch) {
+      const status = tradeMatch[1];
+      if (status === "暂停申购") {
+        purchaseStatus = "suspended";
+      } else if (status === "限大额") {
+        purchaseStatus = "limited";
+      } else {
+        purchaseStatus = "open";
+      }
     }
   }
 
@@ -164,12 +174,22 @@ async function fetchF10Lite(code: string): Promise<F10Status> {
   let purchaseStatus: "open" | "limited" | "suspended" = "open";
   let dailyLimit: number | null = null;
 
-  const tradeMatch = text.match(/交易状态[：:]\s*(\S+)/);
-  if (tradeMatch) {
-    const s = tradeMatch[1];
+  // 优先从表格解析"申购状态XXX"
+  const purchaseTableMatch = text.match(/申购状态\s*(限大额|暂停申购|开放申购)/);
+  if (purchaseTableMatch) {
+    const s = purchaseTableMatch[1];
     if (s === "暂停申购") purchaseStatus = "suspended";
     else if (s === "限大额") purchaseStatus = "limited";
     else purchaseStatus = "open";
+  } else {
+    // 回退：侧边栏 "交易状态：XXX"
+    const tradeMatch = text.match(/交易状态[：:]\s*(\S+)/);
+    if (tradeMatch) {
+      const s = tradeMatch[1];
+      if (s === "暂停申购") purchaseStatus = "suspended";
+      else if (s === "限大额") purchaseStatus = "limited";
+      else purchaseStatus = "open";
+    }
   }
 
   const limitMatch = text.match(/日累计申购限额\s*([\d,.]+)\s*(万元|元)/);

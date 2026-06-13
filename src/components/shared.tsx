@@ -41,7 +41,11 @@ export const statusConfig = {
 /** 格式化限额金额 */
 export function formatLimit(amount: number): string {
   if (amount <= 0) return "—";
-  if (amount >= 10000) return `${(amount / 10000).toFixed(0)}万元`;
+  if (amount >= 10000) {
+    const wan = amount / 10000;
+    // 整数万直接显示，非整数保留1位小数
+    return `${Number.isInteger(wan) ? wan : wan.toFixed(1)}万元`;
+  }
   return `${amount}元`;
 }
 

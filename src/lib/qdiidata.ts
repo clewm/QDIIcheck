@@ -124,7 +124,7 @@ function parseRecord(record: string): QDIIFund {
     sinceInception: parseFloatSafe(f[14]),
     purchaseStatus: parseStatus(f[15], f[16]),
     minPurchase: f[24] || "",
-    limitAmount: parseLimitAmount(f[24]),
+    limitAmount: 0, // API 不提供日累计限额，由 F10 enrichment 填充
     categories,
     feeRate: f[27] || "",
   };
@@ -133,6 +133,7 @@ function parseRecord(record: string): QDIIFund {
 /** 进程内内存缓存，避免高频请求时重复调 S3 */
 let _cache: { data: QDIIFund[]; ts: number } | null = null;
 const CACHE_TTL_MS = 60 * 60 * 1000; // 1 小时
+const S3_CACHE_TTL_S = 24 * 3600; // S3 缓存 24 小时，覆盖两次 cron 之间的间隔
 
 /** 获取上次数据更新时间戳（毫秒），0 表示尚未更新 */
 export function getLastUpdateTime(): number {
@@ -190,6 +191,7 @@ export async function fetchFundsFromAPI(): Promise<QDIIFund[]> {
 
 /**
  * 后台用 F10 数据补充准确的申购状态和限额，然后更新 S3 缓存
+ * 只有此函数才写入 S3 缓存，确保 S3 中永远是经过 enrichment 的正确数据
  */
 export async function enrichWithF10(funds: QDIIFund[]): Promise<QDIIFund[]> {
   try {
@@ -202,19 +204,22 @@ export async function enrichWithF10(funds: QDIIFund[]): Promise<QDIIFund[]> {
       const f10 = f10Data.get(fund.code);
       if (f10) {
         fund.purchaseStatus = f10.purchaseStatus;
-        fund.limitAmount = f10.dailyLimit ?? 0;
+        // dailyLimit 为 null 时（解析失败）不覆盖，保留原值（API 默认 0）
+        if (f10.dailyLimit !== null) {
+          fund.limitAmount = f10.dailyLimit;
+        }
       }
     }
   } catch {
     // F10 抓取失败时保留 API 原始数据
   }
 
-  // 更新缓存
+  // 更新缓存（内存 + S3）
   const ts = Date.now();
   const payload: CachePayload = { data: funds, ts };
   _cache = payload;
   const storage = getStorage();
-  await storage.saveQDIICache(JSON.stringify(payload), 3600);
+  await storage.saveQDIICache(JSON.stringify(payload), S3_CACHE_TTL_S);
 
   return funds;
 }
@@ -222,6 +227,9 @@ export async function enrichWithF10(funds: QDIIFund[]): Promise<QDIIFund[]> {
 /**
  * 获取全部 QDII 基金列表
  * @param forceRefresh 跳过缓存，强制重新抓取（cron 调用时使用）
+ *
+ * ⚠️ 此函数不写入 S3 缓存 — 只有 enrichWithF10 才会写入 S3，
+ *    避免未 enrich 的 API 数据（limitAmount 全为 0）覆盖已有的 F10 正确数据。
  */
 export async function fetchQDIIFunds(forceRefresh = false): Promise<QDIIFund[]> {
   const storage = getStorage();
@@ -231,7 +239,7 @@ export async function fetchQDIIFunds(forceRefresh = false): Promise<QDIIFund[]> 
     return _cache.data;
   }
 
-  // 非强制刷新时，尝试从 S3 读取缓存
+  // 非强制刷新时，尝试从 S3 读取缓存（enriched 数据）
   if (!forceRefresh) {
     const cached = await storage.getQDIICache();
     if (cached) {
@@ -245,15 +253,12 @@ export async function fetchQDIIFunds(forceRefresh = false): Promise<QDIIFund[]> 
     }
   }
 
-  // 从 API 拉取基础数据（快速）
+  // 从 API 拉取基础数据（快速，~2秒）
+  // 注意：只更新内存缓存，不写入 S3（避免覆盖 enriched 数据）
   const funds = await fetchFundsFromAPI();
-
   const ts = Date.now();
   const payload: CachePayload = { data: funds, ts };
   _cache = payload;
-
-  // 先保存基础数据到 S3，页面可立即使用
-  await storage.saveQDIICache(JSON.stringify(payload), 3600);
 
   return funds;
 }
