@@ -111,12 +111,12 @@ export function DashboardClient({ initialFunds, categories, lastUpdate }: Props)
     <>
       {/* Header */}
       <header className="sticky top-0 z-40 bg-background/80 backdrop-blur-lg border-b border-border">
-        <div className="flex items-center justify-between px-6 py-3">
+        <div className="flex items-center justify-between px-3 sm:px-6 py-3">
           {/* Left: title + description */}
           <div>
             <h1 className="text-lg font-semibold tracking-tight">QDII Watch</h1>
             <p className="text-[11px] text-muted-foreground">
-              每日自动监控 QDII 基金申购限额，支持邮件订阅推送
+              每日自动监控 QDII 基金申购限额
             </p>
           </div>
 
@@ -167,7 +167,7 @@ export function DashboardClient({ initialFunds, categories, lastUpdate }: Props)
 
       <main className="flex-1 pb-8">
         {/* Search */}
-        <div className="px-6 pt-4">
+        <div className="px-3 sm:px-6 pt-4">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
@@ -180,7 +180,7 @@ export function DashboardClient({ initialFunds, categories, lastUpdate }: Props)
         </div>
 
         {/* Filters */}
-        <div className="px-6 pt-3 flex flex-wrap items-center gap-2">
+        <div className="px-3 sm:px-6 pt-3 flex flex-wrap items-center gap-2">
           {/* View toggle */}
           <div className="flex gap-1.5">
             {(["all", "followed"] as const).map((v) => (
@@ -261,7 +261,7 @@ export function DashboardClient({ initialFunds, categories, lastUpdate }: Props)
         </div>
 
         {/* Count */}
-        <div className="px-6 pt-3 pb-2">
+        <div className="px-3 sm:px-6 pt-3 pb-2">
           <p className="text-xs text-muted-foreground">{filtered.length} 只基金</p>
         </div>
 
@@ -275,7 +275,7 @@ export function DashboardClient({ initialFunds, categories, lastUpdate }: Props)
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-2 gap-3 px-6 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+          <div className="grid grid-cols-2 gap-2 px-3 sm:gap-3 sm:px-6 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
             {filtered.map((fund) => (
               <FundCard
                 key={fund.code}
@@ -288,6 +288,13 @@ export function DashboardClient({ initialFunds, categories, lastUpdate }: Props)
           </div>
         )}
       </main>
+
+      {/* Disclaimer */}
+      <footer className="border-t border-border px-3 sm:px-6 py-4 text-center">
+        <p className="text-[11px] text-muted-foreground leading-relaxed">
+          数据来源于公开信息，仅供学习研究和参考，不构成任何投资建议。使用本站数据进行投资决策所造成的盈亏由投资者自行承担。
+        </p>
+      </footer>
 
       {/* Modals */}
       <FundDetailModal

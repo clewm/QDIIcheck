@@ -46,7 +46,7 @@ export function FundCard({
             e.stopPropagation();
             onToggleFollow(fund.code);
           }}
-          className="absolute top-3 right-3 z-10 p-1 rounded-full hover:bg-background/80 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+          className="absolute top-2 right-2 sm:top-3 sm:right-3 z-10 p-1 rounded-full hover:bg-background/80 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
           title={following ? "取消关注" : "关注"}
           aria-label={following ? "取消关注" : "关注"}
         >
@@ -61,30 +61,30 @@ export function FundCard({
         </button>
       )}
 
-      <CardContent className="p-4 flex flex-col gap-3">
+      <CardContent className="p-3 sm:p-4 flex flex-col gap-2 sm:gap-3">
         {/* Name */}
-        <div className="flex items-start gap-2 pr-6">
+        <div className="flex items-start gap-1.5 sm:gap-2 pr-5 sm:pr-6">
           <span
             className={cn(
-              "mt-1.5 inline-block h-2 w-2 rounded-full shrink-0",
+              "mt-1 inline-block h-1.5 w-1.5 sm:h-2 sm:w-2 rounded-full shrink-0",
               st.dot
             )}
           />
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-medium leading-tight line-clamp-3">
+            <p className="text-xs sm:text-sm font-medium leading-snug sm:leading-tight line-clamp-2 sm:line-clamp-3">
               {fund.name}
             </p>
-            <p className="text-[11px] text-muted-foreground font-mono">
+            <p className="text-[10px] sm:text-[11px] text-muted-foreground font-mono">
               {fund.code}
             </p>
           </div>
         </div>
 
         {/* Limit */}
-        <div className="flex items-baseline justify-between">
+        <div className="flex items-center justify-between gap-1">
           <span
             className={cn(
-              "font-mono text-xl font-bold tabular-nums",
+              "font-mono text-base sm:text-xl font-bold tabular-nums truncate",
               limitColor(fund.limitAmount, fund.purchaseStatus)
             )}
           >
@@ -95,7 +95,7 @@ export function FundCard({
           <Badge
             variant="outline"
             className={cn(
-              "text-[10px] px-1.5 py-0",
+              "text-[9px] sm:text-[10px] px-1 sm:px-1.5 py-0 shrink-0",
               st.dot.replace("bg-", "border-")
             )}
           >
@@ -104,20 +104,20 @@ export function FundCard({
         </div>
 
         {/* Returns */}
-        <div className="flex items-center justify-between text-xs">
-          <div className="flex items-center gap-1.5">
-            <span className="text-muted-foreground">近1月</span>
-            <Pct value={fund.month1} className="text-sm font-medium" />
+        <div className="flex items-center justify-between text-[11px] sm:text-xs">
+          <div className="flex items-center gap-1 sm:gap-1.5">
+            <span className="text-muted-foreground">1月</span>
+            <Pct value={fund.month1} className="text-xs sm:text-sm font-medium" />
           </div>
-          <div className="flex items-center gap-1.5">
-            <span className="text-muted-foreground">日涨跌</span>
-            <Pct value={fund.dayChange} className="text-sm font-medium" />
+          <div className="flex items-center gap-1 sm:gap-1.5">
+            <span className="text-muted-foreground">日跌</span>
+            <Pct value={fund.dayChange} className="text-xs sm:text-sm font-medium" />
           </div>
         </div>
 
-        {/* Categories */}
+        {/* Categories — hidden on mobile to reduce clutter */}
         {fund.categories.length > 0 && (
-          <div className="flex gap-1 flex-wrap">
+          <div className="hidden sm:flex gap-1 flex-wrap">
             {fund.categories.slice(0, 2).map((cat) => (
               <span
                 key={cat}

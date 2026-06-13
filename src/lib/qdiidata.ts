@@ -147,24 +147,27 @@ interface CachePayload {
 /**
  * 获取全部 QDII 基金列表（带 F10 准确限额数据）
  * 自动批量抓取 F10 页面覆盖 API 的不准确状态
+ * @param forceRefresh 跳过缓存，强制重新抓取（cron 调用时使用）
  */
-export async function fetchQDIIFunds(): Promise<QDIIFund[]> {
+export async function fetchQDIIFunds(forceRefresh = false): Promise<QDIIFund[]> {
   const storage = getStorage();
 
-  // 进程内缓存命中
-  if (_cache && Date.now() - _cache.ts < CACHE_TTL_MS) {
+  // 非强制刷新时，优先使用进程内缓存
+  if (!forceRefresh && _cache && Date.now() - _cache.ts < CACHE_TTL_MS) {
     return _cache.data;
   }
 
-  // 尝试从存储层读取缓存
-  const cached = await storage.getQDIICache();
-  if (cached) {
-    try {
-      const payload: CachePayload = JSON.parse(cached);
-      _cache = payload;
-      return payload.data;
-    } catch {
-      // 缓存数据损坏，继续重新抓取
+  // 非强制刷新时，尝试从 S3 读取缓存
+  if (!forceRefresh) {
+    const cached = await storage.getQDIICache();
+    if (cached) {
+      try {
+        const payload: CachePayload = JSON.parse(cached);
+        _cache = payload;
+        return payload.data;
+      } catch {
+        // 缓存数据损坏，继续重新抓取
+      }
     }
   }
 

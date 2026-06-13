@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { getAllSubscriptions } from "@/lib/subscriptions";
-import { fetchQDIIFunds } from "@/lib/qdiidata";
+import { fetchQDIIFunds, getLastUpdateTime } from "@/lib/qdiidata";
 import { sendNotificationEmail } from "@/lib/email";
 
 export const dynamic = "force-dynamic";
@@ -21,17 +21,19 @@ export async function GET(request: Request) {
   }
 
   try {
-    // 拉取最新数据（含 F10 准确限额）→ 自动写入 S3 缓存
-    const allFunds = await fetchQDIIFunds();
+    // 强制拉取最新数据（跳过缓存）→ 写入 S3 缓存
+    const allFunds = await fetchQDIIFunds(true);
 
     // 刷新首页和基金详情页的 ISR 缓存
     revalidatePath("/");
     revalidatePath("/fund/[code]", "page");
 
+    const lastUpdate = new Date(getLastUpdateTime()).toISOString();
+
     // 获取所有活跃订阅
     const subscriptions = await getAllSubscriptions();
     if (subscriptions.length === 0) {
-      return NextResponse.json({ funds: allFunds.length, message: "Data refreshed, no active subscriptions" });
+      return NextResponse.json({ funds: allFunds.length, lastUpdate, message: "Data refreshed, no active subscriptions" });
     }
 
     let sent = 0;
@@ -62,7 +64,7 @@ export async function GET(request: Request) {
       }
     }
 
-    return NextResponse.json({ funds: allFunds.length, sent, failed, total: subscriptions.length });
+    return NextResponse.json({ funds: allFunds.length, lastUpdate, sent, failed, total: subscriptions.length });
   } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Unknown error" },
