@@ -15,6 +15,10 @@ export interface StorageProvider {
   saveQDIICache(data: string, ttlSeconds: number): Promise<void>;
   /** Invalidate QDII cache */
   invalidateQDIICache(): Promise<void>;
+  /** Get fund history snapshots JSON */
+  getFundHistory(): Promise<string>;
+  /** Save fund history snapshots JSON */
+  saveFundHistory(data: string): Promise<void>;
 }
 
 // ---------------------------------------------------------------------------

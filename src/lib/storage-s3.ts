@@ -189,6 +189,7 @@ interface CacheWrapper {
 
 const SUBS_KEY = "subscriptions.json";
 const FUND_CACHE_KEY = "fund-cache.json";
+const HISTORY_KEY = "fund-history.json";
 
 export class S3StorageProvider implements StorageProvider {
   async getSubscriptions(): Promise<string> {
@@ -227,5 +228,14 @@ export class S3StorageProvider implements StorageProvider {
 
   async invalidateQDIICache(): Promise<void> {
     await s3Delete(FUND_CACHE_KEY);
+  }
+
+  async getFundHistory(): Promise<string> {
+    const data = await s3Get(HISTORY_KEY);
+    return data ?? '{"snapshots":[]}';
+  }
+
+  async saveFundHistory(data: string): Promise<void> {
+    await s3Put(HISTORY_KEY, data);
   }
 }

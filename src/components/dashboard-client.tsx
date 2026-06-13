@@ -1,15 +1,16 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import type { QDIIFund } from "@/lib/types";
 import { FundCard } from "@/components/fund-card";
 import { FundDetailModal } from "@/components/fund-detail-modal";
 import { SubscribeModal } from "@/components/subscribe-modal";
 import { Input } from "@/components/ui/input";
-import { Search, Bell, ChevronDown } from "lucide-react";
+import { Search, Bell, ChevronDown, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useFollows } from "@/hooks/use-follows";
 import { useSubscription } from "@/hooks/use-subscription";
+import { toast } from "sonner";
 
 type SortKey = "1n" | "6m" | "3m" | "day" | "ytd" | "limit";
 type StatusFilter = "all" | "open" | "limited" | "suspended";
@@ -59,6 +60,22 @@ export function DashboardClient({ initialFunds, categories, lastUpdate }: Props)
 
   const { follows, toggle, isFollowing } = useFollows();
   const { subscription, subscribe, unsubscribe } = useSubscription();
+
+  // Handle unsubscribe redirect from email link
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const unsub = params.get("unsub");
+    if (unsub) {
+      // Clean up URL
+      window.history.replaceState({}, "", "/");
+      if (unsub === "success") {
+        toast.success("已取消订阅");
+      } else if (unsub === "error") {
+        toast.error(params.get("msg") || "操作失败，请稍后重试");
+      }
+    }
+  }, []);
+
 
   const filtered = useMemo(() => {
     let list = initialFunds;
@@ -174,8 +191,17 @@ export function DashboardClient({ initialFunds, categories, lastUpdate }: Props)
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="搜索基金名称、代码、行业..."
-              className="pl-9"
+              className="pl-9 pr-8"
             />
+            {search && (
+              <button
+                onClick={() => setSearch("")}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 p-0.5 rounded-full hover:bg-muted transition-colors"
+                aria-label="清空搜索"
+              >
+                <X className="h-3.5 w-3.5 text-muted-foreground" />
+              </button>
+            )}
           </div>
         </div>
 
