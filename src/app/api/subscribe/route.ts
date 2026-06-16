@@ -12,13 +12,10 @@ export const dynamic = "force-dynamic";
  */
 export async function POST(request: Request) {
   try {
-    const { email, notifyTime, fundCodes } = await request.json();
+    const { email, fundCodes } = await request.json();
 
     if (!email || typeof email !== "string" || !email.includes("@")) {
       return NextResponse.json({ error: "请输入有效邮箱" }, { status: 400 });
-    }
-    if (!notifyTime || !/^\d{2}:\d{2}$/.test(notifyTime)) {
-      return NextResponse.json({ error: "请选择通知时间" }, { status: 400 });
     }
     if (!Array.isArray(fundCodes) || fundCodes.length === 0) {
       return NextResponse.json(
@@ -27,7 +24,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const sub = await upsertSubscription(email, notifyTime, fundCodes);
+    const sub = await upsertSubscription(email, fundCodes);
     return NextResponse.json({ ok: true, subscription: sub });
   } catch (error) {
     return NextResponse.json(

@@ -332,7 +332,7 @@ export function DashboardClient({ initialFunds, categories, lastUpdate }: Props)
         onClose={() => setShowSubscribe(false)}
         followCount={follows.length}
         subscription={subscription}
-        onSubscribe={(email, time) => subscribe(email, time, follows)}
+        onSubscribe={(email) => subscribe(email, follows)}
         onUnsubscribe={unsubscribe}
       />
     </>

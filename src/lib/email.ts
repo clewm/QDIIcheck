@@ -54,6 +54,8 @@ const C = {
   border: "#e0e0e0",
   bg: "#f5f5f5",
   white: "#ffffff",
+  red: "#dc2626",    // 红涨
+  green: "#16a34a",  // 绿跌
 };
 
 // ---------------------------------------------------------------------------
@@ -62,6 +64,7 @@ const C = {
 
 function formatLimitText(amount: number, status: string): string {
   if (status === "open") return "不限额";
+  if (status === "suspended") return "—";
   if (amount <= 0) return "—";
   if (amount >= 10000) {
     const wan = amount / 10000;
@@ -308,9 +311,9 @@ function buildFundCard(fund: QDIIFund, change?: FundChangeInfo): string {
 
                     <!-- Performance -->
                     <div style="margin-top:10px;font-family:${MONO};font-size:11px;color:${C.muted}">
-                      近1月 <span style="color:${fund.month1 >= 0 ? C.text : C.muted}">${fund.month1 >= 0 ? "+" : ""}${fund.month1.toFixed(2)}%</span>
+                      近1月 <span style="color:${fund.month1 >= 0 ? C.red : C.green}">${fund.month1 >= 0 ? "+" : ""}${fund.month1.toFixed(2)}%</span>
                       <span style="margin:0 8px;color:${C.border}">|</span>
-                      日 <span style="color:${fund.dayChange >= 0 ? C.text : C.muted}">${fund.dayChange >= 0 ? "+" : ""}${fund.dayChange.toFixed(2)}%</span>
+                      日 <span style="color:${fund.dayChange >= 0 ? C.red : C.green}">${fund.dayChange >= 0 ? "+" : ""}${fund.dayChange.toFixed(2)}%</span>
                     </div>
                   </td>
                 </tr>
@@ -457,7 +460,6 @@ export async function sendNotificationEmail(
   to: string,
   funds: QDIIFund[],
   newFunds: QDIIFund[],
-  _notifyTime: string,
   changes: Map<string, FundChangeInfo> = new Map(),
 ) {
   const transporter = getTransporter();

@@ -135,34 +135,38 @@ export async function GET(request: Request) {
         // 对比当前 vs 最新快照，生成变化
         const changes = buildChangeMap(allFunds, latestSnapshot);
 
-        // 发送邮件通知
-        const subscriptions = await getAllSubscriptions();
-        for (const sub of subscriptions) {
-          try {
-            const followedFunds = allFunds.filter((f) =>
-              sub.fundCodes.includes(f.code),
-            );
-            const newFunds = allFunds
-              .filter((f) => f.sinceInception === 0)
-              .slice(0, 10);
+        // 仅在北京时间 12:xx 发送邮件通知（cron 每小时触发一次即可）
+        const nowBeijing = new Date(Date.now() + 8 * 60 * 60 * 1000);
+        const beijingHour = nowBeijing.getUTCHours();
 
-            // 邮件变化只包含该用户关注的基金
-            const followedChanges = new Map<string, FundChangeInfo>();
-            for (const [code, info] of changes) {
-              if (sub.fundCodes.includes(code)) {
-                followedChanges.set(code, info);
+        if (beijingHour === 12) {
+          const subscriptions = await getAllSubscriptions();
+          for (const sub of subscriptions) {
+            try {
+              const followedFunds = allFunds.filter((f) =>
+                sub.fundCodes.includes(f.code),
+              );
+              const newFunds = allFunds
+                .filter((f) => f.sinceInception === 0)
+                .slice(0, 10);
+
+              // 邮件变化只包含该用户关注的基金
+              const followedChanges = new Map<string, FundChangeInfo>();
+              for (const [code, info] of changes) {
+                if (sub.fundCodes.includes(code)) {
+                  followedChanges.set(code, info);
+                }
               }
-            }
 
-            await sendNotificationEmail(
-              sub.email,
-              followedFunds.length > 0 ? followedFunds : allFunds.slice(0, 20),
-              newFunds,
-              sub.notifyTime,
-              followedChanges,
-            );
-          } catch (error) {
-            console.error(`Email failed for ${sub.email}:`, error);
+              await sendNotificationEmail(
+                sub.email,
+                followedFunds.length > 0 ? followedFunds : allFunds.slice(0, 20),
+                newFunds,
+                followedChanges,
+              );
+            } catch (error) {
+              console.error(`Email failed for ${sub.email}:`, error);
+            }
           }
         }
       } catch (error) {

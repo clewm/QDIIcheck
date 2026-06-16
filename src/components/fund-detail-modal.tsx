@@ -122,7 +122,7 @@ export function FundDetailModal({ fund, onClose }: Props) {
               >
                 {fund.purchaseStatus === "open"
                   ? "不限额"
-                  : formatLimit(fund.limitAmount)}
+                  : formatLimit(fund.limitAmount, fund.purchaseStatus)}
               </p>
             </div>
 

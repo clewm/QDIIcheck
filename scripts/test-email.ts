@@ -33,7 +33,7 @@ async function main() {
 
   // Step 1: 订阅
   console.log(`[1/5] 订阅 ${TEST_EMAIL}，关注 ${POPULAR_FUNDS.length} 只基金...`);
-  await upsertSubscription(TEST_EMAIL, "09:00", POPULAR_FUNDS);
+  await upsertSubscription(TEST_EMAIL, POPULAR_FUNDS);
   console.log("  ✅ 订阅成功\n");
 
   // Step 2: 拉取 + enrich 数据
@@ -85,7 +85,7 @@ async function main() {
 
   // Step 5: 发送邮件
   console.log(`[5/5] 发送邮件到 ${TEST_EMAIL}...`);
-  await sendNotificationEmail(TEST_EMAIL, followed, [], "09:00", changes);
+  await sendNotificationEmail(TEST_EMAIL, followed, [], changes);
   console.log("  ✅ 邮件发送成功！\n");
 
   // 保存今天的历史快照（模拟 cron 的行为）

@@ -12,9 +12,9 @@ export function Pct({
 }) {
   const color =
     value > 0
-      ? "text-green-500"
+      ? "text-red-500"
       : value < 0
-        ? "text-red-500"
+        ? "text-green-500"
         : "text-muted-foreground";
   return (
     <span
@@ -38,8 +38,9 @@ export const statusConfig = {
   suspended: { label: "暂停买入", dot: "bg-red-500" },
 };
 
-/** 格式化限额金额 */
-export function formatLimit(amount: number): string {
+/** 格式化限额金额，暂停买入时返回 "—" */
+export function formatLimit(amount: number, status?: string): string {
+  if (status === "suspended") return "—";
   if (amount <= 0) return "—";
   if (amount >= 10000) {
     const wan = amount / 10000;

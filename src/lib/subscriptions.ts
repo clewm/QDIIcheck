@@ -2,7 +2,7 @@ import { getStorage } from "./storage";
 
 export interface Subscription {
   email: string;
-  notifyTime: string; // "HH:MM" 北京时间
+  notifyTime?: string; // "HH:MM" 北京时间，已废弃，保留兼容性
   fundCodes: string[];
   active: boolean;
   createdAt: string;
@@ -33,20 +33,17 @@ export async function getSubscription(
 
 export async function upsertSubscription(
   email: string,
-  notifyTime: string,
   fundCodes: string[]
 ): Promise<Subscription> {
   const all = await readAll();
   const existing = all.find((s) => s.email === email);
 
   if (existing) {
-    existing.notifyTime = notifyTime;
     existing.fundCodes = fundCodes;
     existing.active = true;
   } else {
     all.push({
       email,
-      notifyTime,
       fundCodes,
       active: true,
       createdAt: new Date().toISOString(),

@@ -90,7 +90,7 @@ export function FundCard({
           >
             {fund.purchaseStatus === "open"
               ? "不限额"
-              : formatLimit(fund.limitAmount)}
+              : formatLimit(fund.limitAmount, fund.purchaseStatus)}
           </span>
           <Badge
             variant="outline"

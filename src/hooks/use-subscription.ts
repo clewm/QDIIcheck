@@ -6,7 +6,6 @@ const STORAGE_KEY = "qdii_subscription";
 
 interface Subscription {
   email: string;
-  notifyTime: string; // "HH:MM" 格式
 }
 
 function loadSubscription(): Subscription | null {
@@ -34,17 +33,17 @@ export function useSubscription() {
     setSubscription(loadSubscription());
   }, []);
 
-  const subscribe = useCallback(async (email: string, notifyTime: string, fundCodes: string[]) => {
+  const subscribe = useCallback(async (email: string, fundCodes: string[]) => {
     const res = await fetch("/api/subscribe", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, notifyTime, fundCodes }),
+      body: JSON.stringify({ email, fundCodes }),
     });
     if (!res.ok) {
       const data = await res.json();
       throw new Error(data.error ?? "订阅失败");
     }
-    const sub = { email, notifyTime };
+    const sub = { email };
     saveSubscription(sub);
     setSubscription(sub);
   }, []);

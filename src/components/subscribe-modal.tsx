@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { X, Bell, Mail, Clock, Loader2 } from "lucide-react";
+import { X, Bell, Mail, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
@@ -10,8 +10,8 @@ interface SubscribeModalProps {
   open: boolean;
   onClose: () => void;
   followCount: number;
-  subscription: { email: string; notifyTime: string } | null;
-  onSubscribe: (email: string, notifyTime: string) => Promise<void>;
+  subscription: { email: string } | null;
+  onSubscribe: (email: string) => Promise<void>;
   onUnsubscribe: () => Promise<void>;
 }
 
@@ -24,9 +24,6 @@ export function SubscribeModal({
   onUnsubscribe,
 }: SubscribeModalProps) {
   const [email, setEmail] = useState(subscription?.email ?? "");
-  const [notifyTime, setNotifyTime] = useState(
-    subscription?.notifyTime ?? "09:00"
-  );
   const [loading, setLoading] = useState(false);
   const dialogRef = useRef<HTMLDivElement>(null);
   const emailInputRef = useRef<HTMLInputElement>(null);
@@ -35,7 +32,6 @@ export function SubscribeModal({
   useEffect(() => {
     if (open) {
       setEmail(subscription?.email ?? "");
-      setNotifyTime(subscription?.notifyTime ?? "09:00");
       // Focus email input after open
       setTimeout(() => emailInputRef.current?.focus(), 50);
     }
@@ -69,8 +65,8 @@ export function SubscribeModal({
     }
     setLoading(true);
     try {
-      await onSubscribe(email, notifyTime);
-      toast.success("订阅成功！交易日将收到邮件通知");
+      await onSubscribe(email);
+      toast.success("订阅成功！交易日中午12点将收到邮件通知");
       onClose();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "订阅失败");
@@ -136,7 +132,7 @@ export function SubscribeModal({
           {subscription && (
             <div className="rounded-lg bg-muted p-3 text-xs text-muted-foreground">
               <p>当前订阅: {subscription.email}</p>
-              <p>通知时间: 每交易日 {subscription.notifyTime}</p>
+              <p>通知时间: 每交易日中午 12:00</p>
             </div>
           )}
 
@@ -158,24 +154,6 @@ export function SubscribeModal({
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="your@email.com"
-              />
-            </div>
-
-            {/* Time */}
-            <div className="space-y-1.5">
-              <label
-                htmlFor="subscribe-time"
-                className="text-sm font-medium flex items-center gap-1.5"
-              >
-                <Clock className="h-3.5 w-3.5" />
-                通知时间（北京时间）
-              </label>
-              <Input
-                id="subscribe-time"
-                type="time"
-                required
-                value={notifyTime}
-                onChange={(e) => setNotifyTime(e.target.value)}
               />
             </div>
 
@@ -210,7 +188,7 @@ export function SubscribeModal({
           </form>
 
           <p className="text-[11px] text-muted-foreground text-center leading-relaxed">
-            订阅后，每个交易日将在设定时间收到邮件，
+            订阅后，每个交易日中午 12:00（北京时间）将收到邮件，
             <br />
             包含关注基金的限额情况及新增 QDII 基金。
           </p>
