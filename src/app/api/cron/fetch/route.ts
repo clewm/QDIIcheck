@@ -135,11 +135,14 @@ export async function GET(request: Request) {
         // 对比当前 vs 最新快照，生成变化
         const changes = buildChangeMap(allFunds, latestSnapshot);
 
-        // 仅在北京时间 12:xx 发送邮件通知（cron 每小时触发一次即可）
-        const nowBeijing = new Date(Date.now() + 8 * 60 * 60 * 1000);
-        const beijingHour = nowBeijing.getUTCHours();
+        // 邮件按「北京自然日」去重 —— 每个北京日最多发一次，
+        // 与 EasyCron 实际调用时刻/频次无关（同一天多次调用也只发一封）
+        const beijingToday = new Date(Date.now() + 8 * 60 * 60 * 1000)
+          .toISOString()
+          .slice(0, 10);
+        const lastEmailDate = await getStorage().getLastEmailDate();
 
-        if (beijingHour === 12) {
+        if (lastEmailDate !== beijingToday) {
           const subscriptions = await getAllSubscriptions();
           for (const sub of subscriptions) {
             try {
@@ -168,6 +171,9 @@ export async function GET(request: Request) {
               console.error(`Email failed for ${sub.email}:`, error);
             }
           }
+
+          // 标记今天已发送，避免同一天重复发送
+          await getStorage().saveLastEmailDate(beijingToday);
         }
       } catch (error) {
         console.error("Background enrichment failed:", error);

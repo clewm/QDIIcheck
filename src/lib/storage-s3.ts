@@ -190,6 +190,7 @@ interface CacheWrapper {
 const SUBS_KEY = "subscriptions.json";
 const FUND_CACHE_KEY = "fund-cache.json";
 const HISTORY_KEY = "fund-history.json";
+const LAST_EMAIL_DATE_KEY = "last-email-date.json";
 
 export class S3StorageProvider implements StorageProvider {
   async getSubscriptions(): Promise<string> {
@@ -237,5 +238,20 @@ export class S3StorageProvider implements StorageProvider {
 
   async saveFundHistory(data: string): Promise<void> {
     await s3Put(HISTORY_KEY, data);
+  }
+
+  async getLastEmailDate(): Promise<string | null> {
+    const data = await s3Get(LAST_EMAIL_DATE_KEY);
+    if (!data) return null;
+    try {
+      const parsed = JSON.parse(data);
+      return typeof parsed.date === "string" ? parsed.date : null;
+    } catch {
+      return null;
+    }
+  }
+
+  async saveLastEmailDate(date: string): Promise<void> {
+    await s3Put(LAST_EMAIL_DATE_KEY, JSON.stringify({ date }));
   }
 }

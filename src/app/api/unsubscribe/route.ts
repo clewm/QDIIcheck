@@ -29,12 +29,10 @@ export async function GET(request: Request) {
   try {
     const ok = await deactivateSubscription(email);
     if (ok) {
-      return NextResponse.redirect(
-        `${base}?unsub=success`,
-      );
+      return NextResponse.redirect(`${base}?unsub=success`);
     }
     return NextResponse.redirect(
-      `${base}?unsub=success`,
+      `${base}?unsub=error&msg=${encodeURIComponent("未找到订阅记录，可能已退订")}`,
     );
   } catch {
     return NextResponse.redirect(

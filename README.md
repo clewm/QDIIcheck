@@ -6,11 +6,11 @@
 
 - **框架**: Next.js 15 (App Router, RSC, Server Actions)
 - **UI**: Tailwind CSS 4 + shadcn/ui + Geist 字体
-- **存储**: 本地 JSON 文件 (`data/db.json`)
+- **存储**: S3 兼容对象存储（见 `src/lib/storage-s3.ts`）
 - **抓取**: fetch + cheerio (HTML 解析)
-- **调度**: Vercel Cron + GitHub Actions (备用)
-- **通知**: Bark (iOS) / Server酱 (微信)
-- **部署**: Vercel 免费层
+- **调度**: [EasyCron](https://www.easycron.com/cron-jobs) 定时调用 `/api/cron/fetch` 接口
+- **通知**: 邮件订阅 + Bark (iOS) / Server酱 (微信)
+- **部署**: 腾讯云 EdgeOne Pages
 
 ## 快速开始
 
@@ -57,14 +57,14 @@ data/
 └── db.json                       # 本地数据文件（自动创建）
 ```
 
-## 部署到 Vercel
+## 部署到腾讯云 EdgeOne
 
-1. Push 代码到 GitHub
-2. 在 Vercel 导入项目
-3. 配置环境变量
-4. 部署完成后，Cron 任务自动每天 09:30 和 15:30 (CST) 执行
+1. Push 代码到代码仓库
+2. 在腾讯云 EdgeOne Pages 导入项目并部署（Next.js 应用）
+3. 配置环境变量（至少需要 `S3_*`、`SMTP_*`、`CRON_SECRET`）
+4. 配置定时任务：在 [EasyCron](https://www.easycron.com/cron-jobs) 新建任务，定时调用部署后的 `https://<你的域名>/api/cron/fetch`，请求头带 `Authorization: Bearer $CRON_SECRET`。建议每个交易日调用一次。
 
-> **注意**: Vercel Serverless 的文件系统是临时的，每次冷启动后 `data/db.json` 会丢失。生产环境建议挂载 Vercel KV 或改用 Supabase。本地开发无此限制。
+> **注意**: 本项目**不依赖部署平台自带的 cron**，数据抓取与订阅邮件完全由 EasyCron 触发 `/api/cron/fetch` 驱动，仓库里**没有 `vercel.json`**。订阅邮件按「北京自然日」去重，一天内无论接口被调用几次都只会发一封。数据存储在 S3 兼容对象存储，不依赖本地文件系统。
 
 ## License
 

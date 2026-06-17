@@ -19,6 +19,10 @@ export interface StorageProvider {
   getFundHistory(): Promise<string>;
   /** Save fund history snapshots JSON */
   saveFundHistory(data: string): Promise<void>;
+  /** Get last email notification date (YYYY-MM-DD, Beijing), or null if never sent */
+  getLastEmailDate(): Promise<string | null>;
+  /** Save the last email notification date (YYYY-MM-DD, Beijing) */
+  saveLastEmailDate(date: string): Promise<void>;
 }
 
 // ---------------------------------------------------------------------------

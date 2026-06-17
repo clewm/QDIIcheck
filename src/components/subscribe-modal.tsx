@@ -66,7 +66,7 @@ export function SubscribeModal({
     setLoading(true);
     try {
       await onSubscribe(email);
-      toast.success("订阅成功！交易日中午12点将收到邮件通知");
+      toast.success("订阅成功！交易日 14:00 将收到邮件通知");
       onClose();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "订阅失败");
@@ -132,7 +132,7 @@ export function SubscribeModal({
           {subscription && (
             <div className="rounded-lg bg-muted p-3 text-xs text-muted-foreground">
               <p>当前订阅: {subscription.email}</p>
-              <p>通知时间: 每交易日中午 12:00</p>
+              <p>通知时间: 每交易日 14:00（北京时间）</p>
             </div>
           )}
 
@@ -188,7 +188,7 @@ export function SubscribeModal({
           </form>
 
           <p className="text-[11px] text-muted-foreground text-center leading-relaxed">
-            订阅后，每个交易日中午 12:00（北京时间）将收到邮件，
+            订阅后，每个交易日 14:00（北京时间）将收到邮件，
             <br />
             包含关注基金的限额情况及新增 QDII 基金。
           </p>
