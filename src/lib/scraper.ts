@@ -58,12 +58,12 @@ export interface FundStatus {
  * 数据源: fundf10.eastmoney.com/jjfl_XXXXXX.html
  */
 export async function scrapeFundStatus(code: string): Promise<FundStatus> {
-  const url = `http://fundf10.eastmoney.com/jjfl_${code}.html`;
+  const url = `https://fundf10.eastmoney.com/jjfl_${code}.html`;
   const response = await fetchWithRetry(url, {
     headers: {
       "User-Agent":
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-      Referer: "http://fundf10.eastmoney.com/",
+      Referer: "https://fundf10.eastmoney.com/",
     },
   });
 
@@ -81,34 +81,25 @@ export async function scrapeFundStatus(code: string): Promise<FundStatus> {
   const h4Name = $("h4").first().text().trim().replace(/\.{3}.*$/, "").trim();
   const name = titleMatch?.[1]?.trim() || h4Name || code;
 
-  // 解析申购状态：优先从表格中的"申购状态"解析（可靠），再回退到侧边栏"交易状态："（不可靠）
-  let purchaseStatus: "open" | "limited" | "suspended" = "open";
-  let dailyLimit: number | null = null;
-  let redeemStatus: "open" | "suspended" = "open";
+  const STATUS_MAP: Record<string, "open" | "limited" | "suspended"> = {
+    限大额: "limited",
+    暂停申购: "suspended",
+    开放申购: "open",
+  };
 
-  // 优先从表格解析"申购状态XXX"，这是 F10 表格中的标准字段
+  // 解析申购状态：优先从表格中的"申购状态"解析（可靠），再回退到侧边栏"交易状态："（不可靠）
   const purchaseTableMatch = text.match(/申购状态\s*(限大额|暂停申购|开放申购)/);
-  if (purchaseTableMatch) {
-    const s = purchaseTableMatch[1];
-    if (s === "暂停申购") purchaseStatus = "suspended";
-    else if (s === "限大额") purchaseStatus = "limited";
-    else purchaseStatus = "open";
-  } else {
-    // 回退：侧边栏 "交易状态：XXX"，注意该标签含义不固定（可能是赎回状态）
-    const tradeMatch = text.match(/交易状态[：:]\s*(\S+)/);
-    if (tradeMatch) {
-      const status = tradeMatch[1];
-      if (status === "暂停申购") {
-        purchaseStatus = "suspended";
-      } else if (status === "限大额") {
-        purchaseStatus = "limited";
-      } else {
-        purchaseStatus = "open";
-      }
-    }
+  const tradeMatch = text.match(/交易状态[：:]\s*(限大额|暂停申购|开放申购)/);
+  const matched = purchaseTableMatch?.[1] ?? tradeMatch?.[1];
+  if (!matched) {
+    throw new Error(
+      `F10 status unparseable for ${code} (possible anti-bot wall or layout change)`
+    );
   }
+  const purchaseStatus = STATUS_MAP[matched];
 
   // 解析日累计申购限额
+  let dailyLimit: number | null = null;
   const limitMatch = text.match(/日累计申购限额\s*([\d,.]+)\s*(万元|元)/);
   if (limitMatch) {
     const amount = parseFloat(limitMatch[1].replace(",", ""));
@@ -117,7 +108,7 @@ export async function scrapeFundStatus(code: string): Promise<FundStatus> {
 
   // 解析赎回状态
   const redeemMatch = text.match(/赎回状态\s*(暂停)/);
-  redeemStatus = redeemMatch ? "suspended" : "open";
+  const redeemStatus: "open" | "suspended" = redeemMatch ? "suspended" : "open";
 
   return { code, name: name || code, purchaseStatus, dailyLimit, redeemStatus };
 }
@@ -157,13 +148,19 @@ export interface F10Status {
 
 /**
  * 轻量级 F10 抓取 — 只取交易状态和日累计限额，不解析名称
+ *
+ * ⚠️ 当页面无法解析出已知申购状态时（反爬墙 / 页面改版 / 空响应），
+ *    必须 **抛错** 而不是返回默认 "open"。否则上层 enrichWithF10 会用
+ *    这个错误默认值覆盖掉（相对更可信的）API 原始状态，导致全线基金
+ *    显示成"不限额"。batchFetchF10 会 catch 并跳过，保留 API 原值。
  */
 async function fetchF10Lite(code: string): Promise<F10Status> {
-  const url = `http://fundf10.eastmoney.com/jjfl_${code}.html`;
+  const url = `https://fundf10.eastmoney.com/jjfl_${code}.html`;
   const response = await fetchWithRetry(url, {
     headers: {
-      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-      Referer: "http://fundf10.eastmoney.com/",
+      "User-Agent":
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+      Referer: "https://fundf10.eastmoney.com/",
     },
   });
   if (!response.ok) throw new Error(`HTTP ${response.status}`);
@@ -171,27 +168,24 @@ async function fetchF10Lite(code: string): Promise<F10Status> {
   const $ = cheerio.load(html);
   const text = $.text();
 
-  let purchaseStatus: "open" | "limited" | "suspended" = "open";
-  let dailyLimit: number | null = null;
+  const STATUS_MAP: Record<string, "open" | "limited" | "suspended"> = {
+    限大额: "limited",
+    暂停申购: "suspended",
+    开放申购: "open",
+  };
 
-  // 优先从表格解析"申购状态XXX"
+  // 优先从表格解析"申购状态XXX"，再回退到侧边栏"交易状态：XXX"
   const purchaseTableMatch = text.match(/申购状态\s*(限大额|暂停申购|开放申购)/);
-  if (purchaseTableMatch) {
-    const s = purchaseTableMatch[1];
-    if (s === "暂停申购") purchaseStatus = "suspended";
-    else if (s === "限大额") purchaseStatus = "limited";
-    else purchaseStatus = "open";
-  } else {
-    // 回退：侧边栏 "交易状态：XXX"
-    const tradeMatch = text.match(/交易状态[：:]\s*(\S+)/);
-    if (tradeMatch) {
-      const s = tradeMatch[1];
-      if (s === "暂停申购") purchaseStatus = "suspended";
-      else if (s === "限大额") purchaseStatus = "limited";
-      else purchaseStatus = "open";
-    }
+  const tradeMatch = text.match(/交易状态[：:]\s*(限大额|暂停申购|开放申购)/);
+  const matched = purchaseTableMatch?.[1] ?? tradeMatch?.[1];
+  if (!matched) {
+    throw new Error(
+      `F10 status unparseable for ${code} (possible anti-bot wall or layout change)`
+    );
   }
+  const purchaseStatus = STATUS_MAP[matched];
 
+  let dailyLimit: number | null = null;
   const limitMatch = text.match(/日累计申购限额\s*([\d,.]+)\s*(万元|元)/);
   if (limitMatch) {
     const amount = parseFloat(limitMatch[1].replace(",", ""));

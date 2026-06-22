@@ -190,14 +190,20 @@ export async function fetchFundsFromAPI(): Promise<QDIIFund[]> {
 }
 
 /**
- * 后台用 F10 数据补充准确的申购状态和限额，然后更新 S3 缓存
+ * 用 F10 数据补充准确的申购状态和限额，然后更新 S3 缓存
  * 只有此函数才写入 S3 缓存，确保 S3 中永远是经过 enrichment 的正确数据
+ *
+ * 安全机制：只有当大部分基金成功拿到 F10 数据时才写入 S3。
+ * 否则保留上一次的好缓存 —— 避免用未 enrichment 的 API 原始数据
+ * （limitAmount 全为 0、purchaseStatus 不可靠）覆盖正确数据，
+ * 那会让整站显示成"不限额"或"—"。
  */
 export async function enrichWithF10(funds: QDIIFund[]): Promise<QDIIFund[]> {
+  let enriched = 0;
   try {
     const f10Data = await batchFetchF10(
       funds.map((f) => f.code),
-      10
+      20
     );
 
     for (const fund of funds) {
@@ -208,18 +214,29 @@ export async function enrichWithF10(funds: QDIIFund[]): Promise<QDIIFund[]> {
         if (f10.dailyLimit !== null) {
           fund.limitAmount = f10.dailyLimit;
         }
+        enriched++;
       }
     }
-  } catch {
-    // F10 抓取失败时保留 API 原始数据
+  } catch (error) {
+    // batchFetchF10 本身 per-fund catch，不应抛出；防御性记录
+    console.error("enrichWithF10: batchFetchF10 threw:", error);
   }
 
-  // 更新缓存（内存 + S3）
+  const ratio = funds.length > 0 ? enriched / funds.length : 1;
   const ts = Date.now();
   const payload: CachePayload = { data: funds, ts };
+  // 内存缓存始终更新（本次请求内可用，不持久化）
   _cache = payload;
-  const storage = getStorage();
-  await storage.saveQDIICache(JSON.stringify(payload), S3_CACHE_TTL_S);
+
+  if (ratio >= 0.5) {
+    const storage = getStorage();
+    await storage.saveQDIICache(JSON.stringify(payload), S3_CACHE_TTL_S);
+  } else {
+    // enrichment 大面积失败 → 不写 S3，保留旧的好缓存
+    console.warn(
+      `enrichWithF10: only ${enriched}/${funds.length} enriched (ratio=${ratio.toFixed(2)}) — skipping S3 write to preserve previous cache`
+    );
+  }
 
   return funds;
 }
