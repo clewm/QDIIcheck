@@ -114,6 +114,10 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  // 邮件开关：默认发送；?email=false 时本次不发（用于手动触发刷新数据但不想打扰订阅者）
+  const sendEmail =
+    new URL(request.url).searchParams.get("email") !== "false";
+
   try {
     // 阶段 0：读取历史快照
     const history = await loadHistory();
@@ -139,57 +143,63 @@ export async function GET(request: Request) {
     const changes = buildChangeMap(allFunds, latestSnapshot);
 
     // 阶段 3：邮件发送放进 after() —— 非关键路径，被平台裁掉也不影响数据正确性
-    after(async () => {
-      try {
-        // 邮件按「北京自然日」去重 —— 每个北京日最多发一次，
-        // 与 EasyCron 实际调用时刻/频次无关（同一天多次调用也只发一封）
-        const beijingToday = new Date(Date.now() + 8 * 60 * 60 * 1000)
-          .toISOString()
-          .slice(0, 10);
-        const lastEmailDate = await getStorage().getLastEmailDate();
+    // sendEmail=false 时跳过（用于手动刷新数据但不想发邮件）
+    if (sendEmail) {
+      after(async () => {
+        try {
+          // 邮件按「北京自然日」去重 —— 每个北京日最多发一次，
+          // 与 EasyCron 实际调用时刻/频次无关（同一天多次调用也只发一封）
+          const beijingToday = new Date(Date.now() + 8 * 60 * 60 * 1000)
+            .toISOString()
+            .slice(0, 10);
+          const lastEmailDate = await getStorage().getLastEmailDate();
 
-        if (lastEmailDate === beijingToday) return;
+          if (lastEmailDate === beijingToday) return;
 
-        const subscriptions = await getAllSubscriptions();
-        for (const sub of subscriptions) {
-          try {
-            const followedFunds = allFunds.filter((f) =>
-              sub.fundCodes.includes(f.code),
-            );
-            const newFunds = allFunds
-              .filter((f) => f.sinceInception === 0)
-              .slice(0, 10);
+          const subscriptions = await getAllSubscriptions();
+          for (const sub of subscriptions) {
+            try {
+              const followedFunds = allFunds.filter((f) =>
+                sub.fundCodes.includes(f.code),
+              );
+              const newFunds = allFunds
+                .filter((f) => f.sinceInception === 0)
+                .slice(0, 10);
 
-            // 邮件变化只包含该用户关注的基金
-            const followedChanges = new Map<string, FundChangeInfo>();
-            for (const [code, info] of changes) {
-              if (sub.fundCodes.includes(code)) {
-                followedChanges.set(code, info);
+              // 邮件变化只包含该用户关注的基金
+              const followedChanges = new Map<string, FundChangeInfo>();
+              for (const [code, info] of changes) {
+                if (sub.fundCodes.includes(code)) {
+                  followedChanges.set(code, info);
+                }
               }
+
+              await sendNotificationEmail(
+                sub.email,
+                followedFunds.length > 0 ? followedFunds : allFunds.slice(0, 20),
+                newFunds,
+                followedChanges,
+              );
+            } catch (error) {
+              console.error(`Email failed for ${sub.email}:`, error);
             }
-
-            await sendNotificationEmail(
-              sub.email,
-              followedFunds.length > 0 ? followedFunds : allFunds.slice(0, 20),
-              newFunds,
-              followedChanges,
-            );
-          } catch (error) {
-            console.error(`Email failed for ${sub.email}:`, error);
           }
-        }
 
-        // 标记今天已发送，避免同一天重复发送
-        await getStorage().saveLastEmailDate(beijingToday);
-      } catch (error) {
-        console.error("Background email failed:", error);
-      }
-    });
+          // 标记今天已发送，避免同一天重复发送
+          await getStorage().saveLastEmailDate(beijingToday);
+        } catch (error) {
+          console.error("Background email failed:", error);
+        }
+      });
+    }
 
     return NextResponse.json({
       funds: fundCount,
       lastUpdate,
-      message: "Data fetched + F10 enriched + S3 updated",
+      emailScheduled: sendEmail,
+      message: sendEmail
+        ? "Data fetched + F10 enriched + S3 updated, email scheduled"
+        : "Data fetched + F10 enriched + S3 updated, email skipped (email=false)",
     });
   } catch (error) {
     return NextResponse.json(
